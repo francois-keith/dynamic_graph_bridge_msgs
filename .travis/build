@@ -119,8 +119,7 @@ debian_build_package()
 
 catkin_package()
 {
-   echo `pwd`
-   ls
+   cd $CATKIN_WORKSPACE
    catkin_make
    catkin_lint -W1 ./*
 }
