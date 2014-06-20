@@ -117,7 +117,7 @@ debian_build_package()
 }
 
 
-catkin_package()
+build_catkin_package()
 {
   . /opt/ros/*/setup.sh
    CATKIN_WORKSPACE=$build_dir/..
@@ -140,7 +140,7 @@ else
     # checking if it is a ros folder. Taking appropriate measure.
     # is it a catkin package?
     if [ -e package.xml ]; then
-      catkin_package
+      build_catkin_package
     #elif [ ! x${DIST} = x ]; then
     #  rosmake_package
     else
