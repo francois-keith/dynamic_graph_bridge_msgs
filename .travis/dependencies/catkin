@@ -11,6 +11,8 @@ sudo apt-get install ros-hydro-ros-base
 # workspace
 CATKIN_WORKSPACE=$build_dir
 mkdir -p $CATKIN_WORKSPACE/src
+ls $CATKIN_WORKSPACE
+cd $CATKIN_WORKSPACE
 catkin_make
 . $CATKIN_WORKSPACE/devel/setup.sh
 
