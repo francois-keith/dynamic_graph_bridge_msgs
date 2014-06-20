@@ -124,7 +124,7 @@ catkin_package()
    cd $CATKIN_WORKSPACE
    catkin_make
    # run catkin_lint on every directory.
-   catkin_lint -W1 `ls -d ./src/*`
+   catkin_lint `ls -d ./src/*/`
 }
 
 # Realize a normal build in all branches except the one containing a
