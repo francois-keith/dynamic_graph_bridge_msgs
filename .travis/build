@@ -135,10 +135,6 @@ if [ -d debian ]; then
     echo "Target distribution: ${DIST}"
     debian_build_package
 else
-    if [ ! x${DIST} = x ]; then
-	echo "skipping this build"
-	exit 0
-    fi
     # checking if it is a ros folder. Taking appropriate measure.
     # is it a catkin package?
     if [ -e package.xml ]; then
