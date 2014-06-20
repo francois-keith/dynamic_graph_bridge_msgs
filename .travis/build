@@ -119,8 +119,7 @@ debian_build_package()
 
 catkin_package()
 {
-   echo $build_dir
-   echo $CATKIN_WORKSPACE
+   CATKIN_WORKSPACE=$build_dir
    . $CATKIN_WORKSPACE/devel/setup.sh
    cd $CATKIN_WORKSPACE
    catkin_make
