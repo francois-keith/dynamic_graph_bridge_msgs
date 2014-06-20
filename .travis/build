@@ -117,6 +117,14 @@ debian_build_package()
 }
 
 
+catkin_package()
+{
+   echo `pwd`
+   ls
+   catkin_make
+   catkin_lint -W1 ./*
+}
+
 # Realize a normal build in all branches except the one containing a
 # debian/ folder.
 if [ -d debian ]; then
@@ -133,13 +141,15 @@ else
     fi
     # checking if it is a ros folder. Taking appropriate measure.
     # is it a catkin package?
-    #if [ ! x${DIST} = x ]; then
-    #  catkin_package
+    if [ -e package.xml ]; then
+      catkin_package
+      catkin_lint -W1 dynamic_graph_bridge_msgs
+
     #elif [ ! x${DIST} = x ]; then
     #  rosmake_package
-    #else
+    else
       build_package
-    #fi
+    fi
 fi
 
 # End debug mode
