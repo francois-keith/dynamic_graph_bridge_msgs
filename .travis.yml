@@ -9,6 +9,7 @@ branches:
   only:
   - master
   - groovy
+  - catkin
 script: ./.travis/build
 before_install: ./.travis/before_install
 
