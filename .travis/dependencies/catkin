@@ -11,6 +11,7 @@ sudo apt-get install ros-hydro-ros-base python-catkin-lint
 # workspace
 CATKIN_WORKSPACE=$build_dir
 ln -s $root_dir/.. $CATKIN_WORKSPACE/src
+cd $CATKIN_WORKSPACE
 catkin_init_workspace
 . $CATKIN_WORKSPACE/devel/setup.sh
 
