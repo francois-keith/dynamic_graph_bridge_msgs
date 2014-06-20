@@ -1,7 +1,8 @@
 language: cpp
-compiler:
-- gcc
-matrix:
+compiler: gcc
+env:
+  matrix: # this section is for the Debian branch only
+  - DIST=precise
 notifications:
   email:
   - francois.keith@gmail.com
@@ -9,6 +10,8 @@ branches:
   only:
   - master
   - groovy
-script: ./.travis/build
-before_install: ./.travis/before_install
+script: ./.travis/run build
+after_success: ./.travis/run after_success
+after_failure: ./.travis/run after_failure
+before_install: ./.travis/run dependencies/catkin ./.travis/run before_install
 
