@@ -123,7 +123,7 @@ catkin_package()
    CATKIN_WORKSPACE=$build_dir/..
    cd $CATKIN_WORKSPACE
    catkin_make
-   catkin_lint -W1 ./*
+   catkin_lint -W1 ./src/*
 }
 
 # Realize a normal build in all branches except the one containing a
@@ -140,8 +140,6 @@ else
     # is it a catkin package?
     if [ -e package.xml ]; then
       catkin_package
-      catkin_lint -W1 dynamic_graph_bridge_msgs
-
     #elif [ ! x${DIST} = x ]; then
     #  rosmake_package
     else
