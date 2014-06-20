@@ -120,7 +120,7 @@ debian_build_package()
 catkin_package()
 {
    CATKIN_WORKSPACE=$build_dir
-   . $CATKIN_WORKSPACE/devel/setup.sh
+   . $CATKIN_WORKSPACE/devel/setup.sh &> /dev/null
    cd $CATKIN_WORKSPACE
    catkin_make
    catkin_lint -W1 ./*
