@@ -17,7 +17,7 @@ add_service_files(
   RunPythonFile.srv
 )
 
-generate_messages(DEPENDENCIES std_msgs)
+generate_messages()
 
 catkin_package(
   CATKIN_DEPENDS message_runtime std_msgs
