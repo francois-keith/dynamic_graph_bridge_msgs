@@ -15,14 +15,23 @@ git --version
 git config --global user.name "Thomas Moulard (Travis Automatic Builds)"
 git config --global user.email "thomas.moulard+travis@gmail.com"
 
-# Retrive the submodules.
+# Retrieve the submodules.
 git submodule update --quiet --init --recursive
 
-# Speed up apt
-sudo sh -c "echo \"force-unsafe-io\" > /etc/dpkg/dpkg.cfg.d/02apt-speedup"
+# Setup environment variables.
+export LD_LIBRARY_PATH="$install_dir/lib:$LD_LIBRARY_PATH"
+export PKG_CONFIG_PATH="$install_dir/lib/pkgconfig:$PKG_CONFIG_PATH"
 
-# Update the apt local cache.
-sudo apt-get update -qq
+if [[ ${TRAVIS_OS_NAME} = linux ]]; then
+    # Speed up apt
+    sudo sh -c "echo \"force-unsafe-io\" > /etc/dpkg/dpkg.cfg.d/02apt-speedup"
+
+    # Update the apt local cache.
+    sudo apt-get update -qq
+
+    export LD_LIBRARY_PATH="$install_dir/lib/`dpkg-architecture -qDEB_BUILD_MULTIARCH`:$LD_LIBRARY_PATH"
+    export PKG_CONFIG_PATH="$install_dir/lib/`dpkg-architecture -qDEB_BUILD_MULTIARCH`/pkgconfig:$PKG_CONFIG_PATH"
+fi
 
 # Fetch tags to compute the distance between the last release tag
 # and us.
@@ -31,39 +40,50 @@ git fetch --quiet --tags
 # Shortcuts.
 git_clone="git clone --quiet --recursive"
 
-# Setup environment variables.
-export LD_LIBRARY_PATH="$install_dir/lib:$LD_LIBRARY_PATH"
-export LD_LIBRARY_PATH="$install_dir/lib/`dpkg-architecture -qDEB_BUILD_MULTIARCH`:$LD_LIBRARY_PATH"
-export PKG_CONFIG_PATH="$install_dir/lib/pkgconfig:$PKG_CONFIG_PATH"
-export PKG_CONFIG_PATH="$install_dir/lib/`dpkg-architecture -qDEB_BUILD_MULTIARCH`/pkgconfig:$PKG_CONFIG_PATH"
-
 # Display environment
 echo "Environment:"
 env
+
+# catkin_git_dependency
+# --------------------
+#
+catkin_git_dependency()
+{
+    _string=$1
+    git_dep=${_string%%:*}
+    git_dep_branch=${_string##*:}
+    if [ "$git_dep_branch" == "$git_dep" ]; then
+	git_dep_branch="master"
+    fi
+    echo "--> Getting $git_dep (branch $git_dep_branch)"
+    CATKIN_WORKSPACE=$build_dir/..
+    cd $CATKIN_WORKSPACE/src
+    $git_clone -b $git_dep_branch "git://github.com/$git_dep" "$git_dep"
+}
+
 
 # build_git_dependency
 # --------------------
 #
 # Build a dependency directly from the Git development tree.
+# First argument: repository's GitHub URL + optional branch
+# For example: "jrl-umi3218/jrl-travis" or "jrl-umi3218/jrl-travis:dev"
 build_git_dependency()
 {
-    echo "--> Compiling $1"
-    roscd $1
-    # It is a does the repository exist?
-    if [ $? -eq 0 ]; then
-      if [ -e manifest.xml ]; then
-        catkin_make --pkg $1
-        catkin_lint $1
-      elif [ -e packages.xml ]; then
-        rosmake $1
-      fi
-    else
-      mkdir -p "$build_dir/$1"
-      cd "$build_dir"
-      $git_clone "git://github.com/$1" "$1"
-      cd "$build_dir/$1"
-      make install || make
+    _string=$1
+    git_dep=${_string%%:*}
+    git_dep_branch=${_string##*:}
+    if [ "$git_dep_branch" == "$git_dep" ]; then
+	git_dep_branch="master"
     fi
+    echo "--> Compiling $git_dep (branch $git_dep_branch)"
+    mkdir -p "$build_dir/$git_dep"
+    cd "$build_dir"
+    $git_clone -b $git_dep_branch "git://github.com/$git_dep" "$git_dep"
+    cd "$build_dir/$git_dep"
+    cmake . -DCMAKE_INSTALL_PREFIX:STRING="$install_dir" \
+            -DDISABLE_TESTS:BOOL=ON
+    make install || make
 }
 
 # Check if we are in a debian branch...
@@ -121,57 +141,64 @@ else
 	echo "skipping this build"
 	exit 0
     fi
-    # Add additional PPAs
-    for ppa in ${MASTER_PPA}; do
-	sudo apt-add-repository ppa:${ppa}
-    done
 
-    # ...otherwise we install the dependencies explicitly.
-    sudo apt-get install -qq curl cppcheck ${APT_DEPENDENCIES}
-    sudo pip install cpp-coveralls --use-mirrors
+    if [[ ${TRAVIS_OS_NAME} = linux ]]; then
+	# Add additional PPAs
+	for ppa in ${MASTER_PPA}; do
+            sudo add-apt-repository -y ppa:${ppa}
+	done
+	sudo apt-get update -qq
 
-    # ...if a coverity id is set, get the tools.
-    if `! test x${COVERITY_TOKEN} = x`; then
-	cd $build_dir
-        PROJECT_NAME=`basename $root_dir`
-        # Get appropriate download link
-        case `uname -m` in
-            i?86)
-                BITS=32
-                ;;
-            amd64|x86_64)
-                BITS=64
-                ;;
-        esac
-        coverity_download=https://scan.coverity.com/download/linux-${BITS}
+	# ...otherwise we install the dependencies explicitly.
+	sudo apt-get install -qq curl cppcheck ${APT_DEPENDENCIES}
 
-        # Download the file (token and project name required)
-        wget -O coverity_tool.tgz $coverity_download \
-            --post-data "token=${COVERITY_TOKEN}&project=${PROJECT_NAME}"
-	tar xzf coverity_tool.tgz
-        coverity_dir=`find $build_dir -type d -name 'cov-analysis*'`
-	export PATH="$build_dir/$coverity_dir/bin:$PATH"
-    else
-	echo "coverity support is disabled in this build"
-    fi
+	# Install lcov and related dependencies
+	sudo apt-get install -qq lcov
 
-    # retrieve
-    if `! test x${NSIQCPPSTYLE_FILEFILTERPATH} = x`; then
-	cd $build_dir
-	wget --quiet http://dev.naver.com/frs/download.php/1860/nsiqcppstyle_0.2.2.12.tar.gz
-	tar xzf nsiqcppstyle_0.2.2.12.tar.gz
-	export PATH="$build_dir/nsiqcppstyle:$PATH"
-    else
-	echo "nsiqcppstyle support is disabled in this build"
+	# lcov will only be used on linux
+	gem install coveralls-lcov
+
+	# ...if a coverity id is set, get the tools.
+	if `! test x${COVERITY_TOKEN} = x`; then
+	    cd $build_dir
+            PROJECT_NAME=`basename $root_dir`
+            # Get appropriate download link
+            case `uname -m` in
+		i?86)
+                    BITS=32
+                    ;;
+		amd64|x86_64)
+                    BITS=64
+                    ;;
+            esac
+            coverity_download=https://scan.coverity.com/download/linux-${BITS}
+
+            # Download the file (token and project name required)
+            wget -O coverity_tool.tgz $coverity_download \
+		--post-data "token=${COVERITY_TOKEN}&project=${PROJECT_NAME}"
+	    tar xzf coverity_tool.tgz
+            coverity_dir=`find $build_dir -type d -name 'cov-analysis*'`
+	    export PATH="$build_dir/$coverity_dir/bin:$PATH"
+	else
+	    echo "coverity support is disabled in this build"
+	fi
+
+    elif [[ ${TRAVIS_OS_NAME} = osx ]]; then
+
+	# Add science-related repos
+	brew tap homebrew/science
+
+	# Update homebrew
+	brew update
+
+	# Install user-specified packages
+	brew install cmake cppcheck ${HOMEBREW_DEPENDENCIES}
     fi
 
     # and we build directly dependencies from the Git repository
-    if [ ! "${ROS_GIT_DEPENDENCIES}" -eq "" ]; then
-      cd ~/src
-      wstool init
+    if `! test x${ROS_GIT_DEPENDENCIES} = x`; then
       for package in ${ROS_GIT_DEPENDENCIES}; do
-        rep="${package##*/}"
-        wstool set $rep --git https://github.com/${package}
+        catkin_git_dependency "$package"
       done
     fi
 
@@ -179,7 +206,6 @@ else
     for package in ${GIT_DEPENDENCIES}; do
 	build_git_dependency "$package"
     done
-
 fi
 
 # End debug mode

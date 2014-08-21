@@ -50,7 +50,7 @@ In particular:
    * Run a CMake compatible `make distcheck` (build a release tarball
      and the rebuild the whole project from it.
    * Upload the latest Doxygen documentation to GitHub pages.
- * Integrate with [cppcheck][], [nsiqcppstyle][], [coverity][] to run
+ * Integrate with [cppcheck][], [coverity][] to run
    static analysis on the code and detect issues.
  * Use [coveralls.io][] to track test coverage.
  * Annotate (see [git-notes][]) successful builds with dependencies
@@ -59,6 +59,16 @@ In particular:
 
 Additionally, Debian builds can be realized in a pbuilder sandbox to
 produce Debian packages for various distributions.
+
+Both [`linux`](http://docs.travis-ci.com/user/ci-environment/) and
+[`osx`](http://docs.travis-ci.com/user/osx-ci-environment/) environments
+are supported. In your `.travis.yml` file, you can set:
+
+```
+os:
+  - linux
+  - osx
+```
 
 [jrl-cmakemodules]: https://github.com/jrl-umi3218/jrl-cmakemodules
 [cppcheck]: http://cppcheck.sourceforge.net/
@@ -74,9 +84,10 @@ current dependencies both from APT and those which must be compiled
 from source.
 
 The following environment variables are defining the project
-dependencies:
+dependencies or parameters:
 
- * `APT_DEPENDENCIES` is passed directly to `apt-get install`.
+ * `APT_DEPENDENCIES` is passed directly to `apt-get install` (`linux` only).
+ * `HOMEBREW_DEPENDENCIES` is passed directly to `brew install` (`osx` only).
  * `GIT_DEPENDENCIES` contains the name of the GitHub repositories that
    will be built from source. For instance: `jrl-umi3218/jrl-mathtools
    stack-of-tasks/dynamic-graph` is a valid chain. Please note that
@@ -84,10 +95,24 @@ dependencies:
    dependencies depend on other packages compiled from source which must
    be installed first.
  * `MASTER_PPA` can contain a list of PPA which are needed for this project
-   to compile.
- * If `COVERITY_TOKEN` is set, [coverity][] integration will be setup.
- * If `NSIQCPPSTYLE_FILEFILTERPATH` is set, [nsiqcppstyle][]
-   integration will be setup.
+   to compile (`linux` only). For example:
+
+   ```sh
+   # Use the latest Boost release
+   MASTER_PPA="boost-latest/ppa"
+   ```
+   
+ * If `COVERITY_TOKEN` is set, [coverity][] integration will be setup
+   (`linux` only).
+ * `LCOV_IGNORE_RULES` contains ignore rules for the [coveralls.io][]
+   report (`linux` only). It should be provided in the form:
+
+   ```sh
+   # Ignore all paths containing "foo" or "bar"
+   LCOV_IGNORE_RULES="*foo* *bar*"
+   # This will lead to:
+   # lcov --remove coverage.info '*foo*' '*bar*' -o coverage.info
+   ```
 
 
 ### Build
@@ -96,9 +121,9 @@ The build step in this case is just configuring the package, building
 the package, installing it and running the test suite.
 
 
-Again, if `COVERITY_TOKEN` is set, the `cov-int` tool will be used to
-generate a report which will be uploaded to the Coverity website if
-the build is successful.
+Again, if `COVERITY_TOKEN` is set on `linux`, the `cov-int` tool will
+be used to generate a report which will be uploaded to the Coverity
+website if the build is successful.
 
 
 ### After success
@@ -135,10 +160,6 @@ triggered by each documentation update.
 
 If `COVERITY_TOKEN` is set, a tarball containing the results of the
 build is created and uploaded to the website.
-
-IF `NSIQCPPSTYLE_FILEFILTERPATH` is set, the coding style checker will
-be called and will use the rules stored in the
-`NSIQCPPSTYLE_FILEFILTERPATH` path.
 
 
 To finish, a `git notes` is used to annotate the commit with the build
@@ -239,7 +260,7 @@ $ cp .travis/travis.yml.in .travis.yml
 All the fields `@FOO@` must be replaced by their real value.
 
 
-### Looking for sucessful builds
+### Looking for successful builds
 
 The `after_success` script is automatically adding a [git-notes][] to
 all the successful build. These notes will not be displayed by default
@@ -272,7 +293,6 @@ in this build.
 
 [git-notes]: https://www.kernel.org/pub/software/scm/git/docs/git-notes.html
 [coverity]: https://scan.coverity.com/
-[nsiqcppstyle]: https://code.google.com/p/nsiqcppstyle/
 
 License
 -------
@@ -285,7 +305,7 @@ Authors and Credits
 -------------------
 
  * Thomas Moulard <thomas.moulard@gmail.com> (maintainer)
-
+ * Benjamin Chrétien <chretien@lirmm.fr> (developer)
 
 
 We would like to express our gratitude to [Travis
