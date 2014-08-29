@@ -11,6 +11,7 @@ branches:
   - master
   - groovy
   - catkin
+  - travis
 script: ./.travis/run build
 after_success: ./.travis/run after_success
 after_failure: ./.travis/run after_failure
